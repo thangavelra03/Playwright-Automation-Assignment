@@ -1,50 +1,77 @@
-const fs = require('fs');
 
 const { test, expect } = require('@playwright/test');
-const login = require('../utils/login');
-const credentials = require('../testData/credentials.json');
 
-test('DemoQA Book Store Login Test', async ({ page }) => {
-  await login(page);
-  await expect(page.locator("#userName-value")).toContainText(credentials.username);
-  await expect(page.getByText('Logout')).toBeVisible();
+
+const LoginPage =
+require('../pages/LoginPage');
+
+const BookStorePage =
+require('../pages/BookStorePage');
+
+const saveBookDetails =
+require('../utils/fileUtils');
+
+const credentials =
+require('../testData/credentials.json');
+
+
+test.describe.configure({
+  mode: 'serial'
 });
 
-test('Search Functionality Test', async ({ page }) => {
-  await login(page);
-  await expect(page.locator("#gotoStore")).toBeVisible();
-  await page.locator("#gotoStore").click();
-  await page.locator("#searchBox").toBeVisible;
-  await page.locator("#searchBox").fill('Learning JavaScript Design Patterns');
 
-  const row = page.locator('tbody tr').first();
+test('DemoQA Book Store Test',
+async ({ page }) => {
 
+  const loginPage =
+    new LoginPage(page);
 
-  await expect(row.locator('td').nth(1))
-    .toContainText('Learning JavaScript Design Patterns');
+  const bookStorePage =
+    new BookStorePage(page);
 
 
-  const title = await row.locator('td').nth(1).textContent();
+  // LOGIN
 
-  const author = await row.locator('td').nth(2).textContent();
+  await loginPage.openLoginPage();
 
-  const publisher = await row.locator('td').nth(3).textContent();
-
-  console.log('Title :', title);
-  console.log('Author :', author);
-  console.log('Publisher :', publisher);
-
-
-  const bookDetails = 
-  `
-  Title : ${title}
-  Author : ${author}
-  Publisher : ${publisher}
-  `;
-
-  fs.writeFileSync('book-details.txt', bookDetails);
-
-  await page.getByText('Log out').click();
+  await loginPage.login(
+    credentials.username,
+    credentials.password
+  );
 
 
-})
+  await expect(
+    page.locator('#userName-value')
+  ).toContainText(
+    credentials.username
+  );
+
+
+  // SEARCH BOOK
+
+  await bookStorePage.goToStore();
+
+  await bookStorePage.searchBook(
+    'Learning JavaScript Design Patterns'
+  );
+
+
+  // GET BOOK DETAILS
+
+  const book =
+    await bookStorePage
+      .getBookDetails();
+
+  console.log(book);
+
+
+  // SAVE INTO FILE
+
+  saveBookDetails(book);
+
+
+  // LOGOUT
+
+  await bookStorePage.logout();
+
+});
